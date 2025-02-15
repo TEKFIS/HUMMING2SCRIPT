@@ -1,0 +1,16 @@
+# Ignore Python virtual environment
+venv/
+
+# Ignore large audio files
+audio/*.wav
+audio/*.mp3
+audio/*.zip
+
+# Ignore PyTorch binaries
+venv/lib/python3.12/site-packages/torch/lib/*.dylib
+
+# Ignore other large files
+*.zip
+*.tar.gz
+*.mp4
+*.dylib

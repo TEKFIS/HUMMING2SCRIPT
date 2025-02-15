@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Controls</title>
+    <style>
+        body {
+            font-family: 'Times New Roman', Times, serif,;
+            background-color: #000; /* Black background */
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column; /* Stack text and buttons vertically */
+            justify-content: center; /* Center vertically */
+            align-items: center; /* Center horizontally */
+            color: white;
+        }
+        /* Styling for the instructions */
+        .instructions {
+            text-align: center;
+            margin-bottom: 20px; /* Space between text and buttons */
+            font-size: 18px; /* Slightly larger text */
+            line-height: 1.5; /* Improve readability */
+        }
+        /* Container to align buttons side by side */
+        .button-container {
+            display: flex;
+            gap: 20px; /* Space between buttons */
+        }
+        /* Styling for the buttons */
+        button {
+            background-color: transparent; /* Transparent background */
+            color: white; /* White icon */
+            border: 2px solid white; /* White border */
+            width: 80px; /* Larger box size */
+            height: 80px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 36px; /* Larger icon size */
+        }
+        button.recording {
+            border-color: red; /* Red border when recording */
+        }
+        /* Play button icon */
+        #playRandomButton::before {
+            content: "▶"; /* Play icon */
+        }
+        /* Record button icon */
+        #recordButton::before {
+            content: "●"; /* Record icon (circle) */
+        }
+        /* Styling for the message */
+        #message {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(255, 255, 255, 0.1); /* Semi-transparent white */
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            display: none; /* Hidden by default */
+        }
+    </style>
+</head>
+<body>
+    <!-- Instructions -->
+    <div class="instructions">
+        <em>each spect-actor takes a deep breath in</em><br>
+        <em>on every exhale comes a tone</em><br>
+        <em>the spect-actors begin to hum</em><br>
+        <em>as loud or as quiet as they want to</em><br>
+        <em>as long or as briefly as they want to</em><br>
+        <em>waves in motion</em>
+    </div>
+
+    <!-- Container for buttons -->
+    <div class="button-container">
+        <button id="recordButton"></button>
+        <button id="playRandomButton"></button>
+    </div>
+
+    <!-- Message display -->
+    <div id="message">Recording Finished!</div>
+
+    <audio id="audioPlayer" style="display: none;"></audio>
+
+    <script>
+      const recordButton = document.getElementById('recordButton');
+      const audioPlayer = document.getElementById('audioPlayer');
+      const playRandomButton = document.getElementById('playRandomButton');
+      const messageElement = document.getElementById('message');
+      let mediaRecorder;
+      let audioChunks = [];
+      let isRecording = false;
+  
+      // Check for microphone permissions and start recording
+      const startRecording = async () => {
+          try {
+              const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+              mediaRecorder = new MediaRecorder(stream);
+  
+              mediaRecorder.ondataavailable = (event) => {
+                  audioChunks.push(event.data);
+              };
+  
+              mediaRecorder.onstop = () => {
+                  const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                  const audioUrl = URL.createObjectURL(audioBlob);
+                  audioPlayer.src = audioUrl;
+                  uploadAudio(audioBlob);
+                  audioChunks = []; // Clear chunks for next recording
+  
+                  // Show message when recording is finished
+                  messageElement.style.display = 'block';
+                  setTimeout(() => {
+                      messageElement.style.display = 'none'; // Hide after 3 seconds
+                  }, 3000);
+              };
+  
+              mediaRecorder.start();
+              console.log('Recording started');
+          } catch (error) {
+              console.error('Error accessing microphone: ', error);
+              alert('Failed to access microphone. Please check permissions.');
+          }
+      };
+  
+      const stopRecording = () => {
+          if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+              mediaRecorder.stop();
+              console.log('Recording stopped');
+          }
+      };
+  
+      const uploadAudio = (audioBlob) => {
+          const formData = new FormData();
+          formData.append('audio', audioBlob, 'recording.wav');
+  
+          fetch('/upload-audio', {
+              method: 'POST',
+              body: formData
+          })
+          .then(response => response.json())
+          .then(data => {
+              console.log('Audio uploaded:', data);
+          })
+          .catch(error => {
+              console.error('Error uploading audio:', error);
+          });
+      };
+  
+      // Toggle recording on button click
+      recordButton.addEventListener('click', (e) => {
+          if (isRecording) {
+              stopRecording();
+              recordButton.classList.remove('recording');
+          } else {
+              startRecording();
+              recordButton.classList.add('recording');
+          }
+          isRecording = !isRecording;
+      });
+  
+      // Play a random audio file from the server
+      playRandomButton.addEventListener('click', async (e) => {
+          try {
+              const response = await fetch('/random-audio');
+              if (!response.ok) throw new Error('Failed to fetch random audio file');
+  
+              const audioFilePath = await response.text();
+              audioPlayer.src = audioFilePath;
+              audioPlayer.play();
+          } catch (error) {
+              console.error('Error playing random audio:', error);
+          }
+      });
+  
+      // Change play button border color while audio is playing
+      audioPlayer.addEventListener('play', () => {
+          playRandomButton.style.borderColor = 'green'; // Turn border green
+      });
+  
+      // Revert border color when audio ends
+      audioPlayer.addEventListener('ended', () => {
+          playRandomButton.style.borderColor = 'white'; // Revert to white
+      });
+  
+      // Also handle pausing
+      audioPlayer.addEventListener('pause', () => {
+          playRandomButton.style.borderColor = 'white'; // Revert to white when paused
+
+          // WERKING WITH TEXT AND BUTTON COLOUR CHANGE!!!!!!!!!!!
+      });
+  </script>
+</body>
+</html>
+
